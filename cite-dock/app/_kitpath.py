@@ -30,6 +30,11 @@ WORKSPACE = os.path.dirname(
 )
 KIT_DIR = os.path.join(WORKSPACE, "citedock_kit")
 
+# Nuitka 打包时 citedock_kit 会被编译进 exe，磁盘上不再有兄弟目录：
+# 冻结模式下跳过基于 __file__ 的路径自检，直接走冻结导入。
+# 普通运行 FROZEN 为 False，行为不变。
+FROZEN = getattr(sys, "frozen", False) or "__compiled__" in globals()
+
 MIN_KIT_VERSION = (1, 1, 0)
 
 REQUIRED_SYMBOLS = {
@@ -69,11 +74,12 @@ def _parse_version(text):
 
 
 def _bootstrap():
-    if not os.path.isfile(os.path.join(KIT_DIR, "__init__.py")):
-        _fail("找不到共享包目录。", detail="缺少 %s" % KIT_DIR)
+    if not FROZEN:
+        if not os.path.isfile(os.path.join(KIT_DIR, "__init__.py")):
+            _fail("找不到共享包目录。", detail="缺少 %s" % KIT_DIR)
 
-    if WORKSPACE not in sys.path:
-        sys.path.append(WORKSPACE)
+        if WORKSPACE not in sys.path:
+            sys.path.append(WORKSPACE)
 
     try:
         kit = importlib.import_module("citedock_kit")
