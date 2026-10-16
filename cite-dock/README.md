@@ -1,11 +1,17 @@
 # CiteDock 引用坞
 
-悬浮在桌面上的本地文件检索小坞：**用关键词从你指定的目录里即时捞出相关文件**，
+**你记得内容，只是忘了它在哪个文件里。**
+
+CiteDock 不搜文件名，搜正文。设定集、访谈纪要、会议记录、代码注释——只要那句话在文件里，
+就能把它连同文件一起捞出来：复制路径、复制 `@` 引用，或把多份正文合并成一份。
+**全程离线，源文件全程只读。**
+
+> **English** — CiteDock doesn't search filenames, it searches file bodies. Design docs,
+> meeting minutes, code comments — if the sentence is in a file, CiteDock pulls the file out
+> with it: copy paths, `@` citations, or merge bodies into one text.
+> **Fully offline, read-only on your files, nothing ever uploaded.**
 一键复制路径、`@` 引用，或把多份文档**合并成一份**。**全程离线，源文件全程只读。**
 
-> **English** — A floating search dock for your local files. Find files by keyword,
-> copy matches as `@path` citations, or merge their contents into a single document.
-> **Fully offline, read-only on your files, nothing ever uploaded.**
 
 |            |                                                          |
 | ---------- | -------------------------------------------------------- |
@@ -76,7 +82,7 @@ python run.py
 | 输入框    | 输入即搜（220ms 防抖）；`Enter` 立即搜，`Esc` 收起   |
 | **取词** | 读剪贴板 → 自动抽 3 个关键词并检索（开会/聊天时先复制一段话最省事） |
 | **常驻** | 开启 = 置顶且失焦不隐藏；关闭 = 点别处自动收起，用完即走       |
-| **设置** | 检索范围、排除规则、热键、主题                       |
+| **设置** | 检索范围、排除规则、热键、主题、界面语言                       |
 | **收起** | 先收结果面板，再收整条坞                          |
 
 有命中时结果面板自动展开，每行可勾选：
@@ -89,6 +95,8 @@ python run.py
 | **打开 / 定位** | 打开文件 / 在资源管理器里选中                            |
 
 双击某一行 = 打开该文件。
+
+界面语言默认跟随系统；在设置里可切换 中文 / English，改完立即生效，无需重启。
 
 ---
 
@@ -115,6 +123,24 @@ SQLite 自带的 `unicode61` 分词器不切中文，`trigram` 分词器又要�
   语义上等价于子串匹配，且不受词长限制、不需要 jieba。
 - **排序**：FTS5 `bm25`（文件名权重 ×4）+ 30 天半衰期的"越新越靠前"加权。
 - **兜底**：先按"全部关键词都命中"检索，一条都没有时自动放宽成"命中任一关键词"，并在状态栏如实说明。
+
+---
+
+## 选区探测是怎么做的
+
+开「鼠标取词」后，CiteDock 会装一个全局低级鼠标钩子（WH_MOUSE_LL）。右键或
+「检索选中文字」热键触发时，它模拟一次 Ctrl+C 把当前选区送进剪贴板，读出来，
+再把剪贴板原样还回去——你在用的程序不会察觉内容被换过。
+
+几个边界，都写在明面上：
+
+- **探测不到就直说**：程序没响应 Ctrl+C、没选中文字、剪贴板里是图片或文件、
+  选区超过 5000 字符——每一种失败都会在状态栏给出具体原因，不会静默。
+- **剪贴板先备份后恢复**：探测前后用剪贴板序号核对，你原有的复制内容不会被弄丢。
+- **排除列表**：终端这类把 Ctrl+C 当中断信号的程序默认被排除，列表可在设置里改。
+- **钩子断了会自愈**：低级钩子可能被系统或其它程序悄悄摘掉，CiteDock 每两秒做一次
+  健康检查，发现失活就自动重装；钩子的消息泵用阻塞等待实现，不会拖慢全系统的鼠标。
+- **可随时关**：设置里关掉即彻底卸载钩子。
 
 ---
 
