@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import html
 import os
+import re
 import time
 
 from PySide6.QtCore import (
-    QEvent, QPoint, QProcess, QSize, Qt, QThread, QTimer, QUrl, Signal,
+    QEvent, QMimeData, QPoint, QProcess, QSize, Qt, QThread, QTimer, QUrl, Signal,
 )
 from PySide6.QtGui import QCursor, QDesktopServices, QGuiApplication
 from PySide6.QtWidgets import (
@@ -34,6 +35,45 @@ from ._util import (
 from .result_row import FileMatchRow, ResultRow
 from .selection_bar import SelectionBar
 from .workers import CopyWorker, IndexWorker
+
+
+_PUNCT_ONLY = re.compile(r"^[\s\W_]+$")
+
+
+def _clone_mime(src):
+    """深克隆剪贴板 mimeData —— 文本/图片/文件全格式一并存下，供探测后还原。"""
+    m = QMimeData()
+    if src is not None:
+        for fmt in src.formats():
+            m.setData(fmt, src.data(fmt))
+    return m
+
+
+def _coalesce_segments(segments):
+    """展示层合并孤行标点：纯标点的碎片行（「.」「,」「{」「}」）并进相邻段。
+
+    只动展示，不动提取器（citedock_kit 是通用件）—— PDF 提取出的孤行直接
+    显示成一行很难看。开头没上一段的先暂存、拼到下一段开头。
+    """
+    out = []
+    hold = []
+    for index, text in segments:
+        text = (text or "").strip()
+        if not text:
+            continue
+        if len(text) <= 3 and _PUNCT_ONLY.match(text):
+            if out:
+                out[-1] = (out[-1][0], out[-1][1] + text)
+            else:
+                hold.append(text)
+            continue
+        if hold:
+            text = "".join(hold) + text
+            hold = []
+        out.append((index, text))
+    if hold and out:
+        out[-1] = (out[-1][0], out[-1][1] + "".join(hold))
+    return out
 
 
 class DragFrame(QFrame):
@@ -680,6 +720,7 @@ QLabel#banner {
         self._start_selection_probe(x, y, via="right")
 
     def _start_selection_probe(self, x, y, via="right"):
+        self._probe_mime = None
         if self._probe is not None and self._probe.isRunning():
             return
         if mousehook.is_excluded(self.cfg.get("mousehook_exclude")):
@@ -688,6 +729,8 @@ QLabel#banner {
             )
             return
         wait_ms = int(self.cfg.get("mousehook_wait_ms") or 120)
+        # 备份剪贴板全格式（含图片）—— 探测会 Ctrl+C 覆盖剪贴板，事后还原
+        self._probe_mime = _clone_mime(QGuiApplication.clipboard().mimeData())
         self._probe = mousehook.SelectionProbe(x, y, wait_ms)
         self._probe.detected.connect(self._on_selection_detected)
         self._probe.nothing.connect(self._on_selection_nothing)
@@ -695,12 +738,14 @@ QLabel#banner {
 
     def _on_selection_nothing(self, reason):
         """没拿到选区时如实说明 —— 否则用户不知道是坏了还是没选中。"""
+        self._restore_clipboard_mime()
         if not reason:
             return
         self.show_dock(expand=True, focus_input=False)
         self.lbl_status.setText(t("没拿到选区：%s") % reason)
 
     def _on_selection_detected(self, x, y, text):
+        self._restore_clipboard_mime()
         self.show_selection_bar(x, y, text)
 
     #: 浮条相对光标的偏移（**逻辑像素**）。
@@ -738,6 +783,12 @@ QLabel#banner {
         x = max(left, min(x, right - width))
         y = max(top, min(y, bottom - height))
         return QPoint(x, y)
+
+    def _restore_clipboard_mime(self):
+        mime = getattr(self, "_probe_mime", None)
+        if mime is not None:
+            QGuiApplication.clipboard().setMimeData(mime)
+            self._probe_mime = None
 
     def show_selection_bar(self, x, y, text):
         """在**光标处**弹浮条。
@@ -808,7 +859,7 @@ QLabel#banner {
             return
         self._file_data = data
         self._file_kind = kind
-        self._file_segments = segments
+        self._file_segments = _coalesce_segments(segments)
         self.lbl_file_name.setText(data["name"])
         self.file_input.clear()
         changed = False

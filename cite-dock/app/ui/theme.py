@@ -98,6 +98,7 @@ def window_color(theme):
 
 def build_qss(theme, extra=""):
     c = palette(theme)
+    opaque = window_color(theme)
     return f"""
 * {{
     font-family: {FONT_FAMILY};
@@ -108,6 +109,17 @@ QWidget#card {{
     border: 1px solid {c['card_border']};
     border-radius: 12px;
 }}
+QWidget#selbar {{
+    background: {opaque};
+    border: 1px solid {c['input_focus']};
+    border-radius: 10px;
+}}
+QWidget#selbar QPushButton {{
+    color: {c['text']};
+    background: {c['btn_bg_hover']};
+    border: 1px solid {c['btn_border']};
+}}
+QWidget#selbar QLabel#faint {{ color: {c['text_dim']}; }}
 QLabel {{ color: {c['text']}; background: transparent; }}
 QLabel#dim {{ color: {c['text_dim']}; }}
 QLabel#faint {{ color: {c['text_faint']}; }}

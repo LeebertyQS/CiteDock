@@ -19,7 +19,7 @@ class SelectionBar(QWidget):
         self._text = text
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
-        self.setObjectName("card")
+        self.setObjectName("selbar")
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(10, 8, 10, 8)

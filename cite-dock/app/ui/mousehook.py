@@ -517,23 +517,17 @@ class SelectionProbe(QThread):
             self.nothing.emit(self._reason)
 
     def _probe(self):
-        if _clipboard_has_non_text():
-            self._reason = t("剪贴板里是图片或文件，已跳过探测（不会把它清掉）")
-            return ""
-        backup = _clipboard_text()
-        if backup is None:
-            self._reason = t("剪贴板里是图片或文件，已跳过探测（不会把它清掉）")
-            return ""
+        # 剪贴板里可能本来是图片/文件。不在本线程做文本备份还原（那会丢图）——
+        # 全格式的备份/还原由主线程用 QMimeData 克隆完成（见 dock_window）。
         seq_before = _clipboard_sequence()
         _send_ctrl_c()
         time.sleep(self._wait_ms / 1000.0)
         text = _clipboard_text()
         seq_after = _clipboard_sequence()
-        _set_clipboard_text(backup)
         if seq_after == seq_before:
             self._reason = t("这个程序没有响应 Ctrl+C，读不到选区（也可能你没选中文字）")
             return ""
-        if not text or text == backup:
+        if not text:
             self._reason = t("没有检测到选中的文字")
             return ""
         if len(text) > 5000:

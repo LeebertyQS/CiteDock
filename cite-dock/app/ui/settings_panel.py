@@ -58,6 +58,13 @@ class NoWheelSpinBox(QSpinBox):
         event.ignore()
 
 
+class NoWheelComboBox(QComboBox):
+    """下拉框不吃滚轮：滚轮统一留给整页滚动（主题/语言选择）。"""
+
+    def wheelEvent(self, event):
+        event.ignore()
+
+
 class SettingsDialog(QDialog):
     def __init__(self, cfg, parent=None):
         super().__init__(parent)
@@ -212,7 +219,7 @@ class SettingsDialog(QDialog):
         self.cb_audit.setChecked(bool(cfg.get("audit_enabled", True)))
         form.addRow("", self.cb_audit)
 
-        self.cb_theme = QComboBox()
+        self.cb_theme = NoWheelComboBox()
         self.cb_theme.addItem(t("跟随系统"), "auto")
         self.cb_theme.addItem(t("深色"), "dark")
         self.cb_theme.addItem(t("浅色"), "light")
@@ -221,7 +228,7 @@ class SettingsDialog(QDialog):
 
         # 语言名用**自称**显示（中文 / English），不随界面语言变化 ——
         # 这样任何语言下你都认得出自己的母语。
-        self.cb_language = QComboBox()
+        self.cb_language = NoWheelComboBox()
         self.cb_language.addItem(t("跟随系统"), "auto")
         for code in i18n.SUPPORTED:
             self.cb_language.addItem(i18n.LANGUAGE_NAMES[code], code)
