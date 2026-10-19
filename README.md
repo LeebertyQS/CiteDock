@@ -1,7 +1,5 @@
 # CiteDock 引用坞
 
-<video src="https://github.com/user-attachments/assets/e727ca71-175b-432e-93f6-92f5333bf5f8" controls autoplay loop muted playsinline width="100%"></video>
-
 **你记得内容，只是忘了它在哪个文件里。**
 
 别再靠文件名找文档了。你记得那句话，就搜那句话。写东西最烦的不是没资料，是资料就在硬盘里，你找不到。翻文件夹翻半天，不如直接搜内容。
